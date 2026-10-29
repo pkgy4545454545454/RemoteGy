@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>PC Remote</title>
+<style>
+  :root{--bg:#0f1115;--card:#181b22;--line:#272b35;--txt:#e8eaf0;--mut:#8b91a0;--acc:#4f8cff;--ok:#2ecc71;--bad:#ff5d5d}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font:15px system-ui,sans-serif;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom)}
+  header{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line)}
+  #dot{width:10px;height:10px;border-radius:50%;background:var(--bad)}
+  #dot.on{background:var(--ok)}
+  nav{display:flex;gap:4px;flex:1}
+  nav button{flex:1;padding:8px;border:0;border-radius:8px;background:transparent;color:var(--mut);font-weight:600}
+  nav button.act{background:var(--card);color:var(--txt)}
+  .view{display:none;flex:1;min-height:0;flex-direction:column}
+  .view.act{display:flex}
+  button,select{font:inherit;color:var(--txt);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+  button.p{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+  button.on{background:var(--ok);border-color:var(--ok);color:#06210f}
+  button.danger{background:var(--bad);border-color:var(--bad);color:#fff}
+  .bar{display:flex;gap:6px;padding:8px;flex-wrap:wrap;border-top:1px solid var(--line)}
+  #pad{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;touch-action:none;background:#000;position:relative;overflow:hidden}
+  #screen{max-width:100%;max-height:100%;object-fit:contain;pointer-events:none;user-select:none;transform-origin:center center;will-change:transform}
+  body.fs header,body.fs #v-screen>.bar{display:none}
+  #fsBar{display:none;position:fixed;top:max(8px,env(safe-area-inset-top));right:8px;z-index:30;gap:6px;opacity:.88}
+  body.fs #fsBar{display:flex}
+  body.fs #kb.open{position:fixed;left:0;right:0;bottom:0;z-index:25;background:var(--bg)}
+  #hint{position:absolute;color:var(--mut);text-align:center;padding:20px}
+  .log{flex:1;min-height:0;margin:8px;padding:10px;background:#0a0c10;border:1px solid var(--line);border-radius:10px;overflow:auto;white-space:pre-wrap;word-break:break-word;font:13px ui-monospace,Menlo,Consolas,monospace}
+  textarea,input[type=text]{width:100%;font:inherit;color:var(--txt);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px}
+  textarea{resize:none;height:84px}
+  #kb{display:none;padding:8px;border-top:1px solid var(--line)}
+  #kb.open{display:block}
+  .keys{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .keys button{padding:7px 9px;font-size:13px}
+  #bPcs{flex:none;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #pcs{display:none;position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.6);align-items:flex-end;justify-content:center}
+  #pcs.open{display:flex}
+  #pcs .sheet{width:100%;max-width:520px;max-height:88%;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:16px 16px 0 0;padding:12px 12px calc(12px + env(safe-area-inset-bottom))}
+  .sh-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:17px}
+  .pcrow{display:flex;gap:6px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+  .pcrow .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+  .pcrow small{color:var(--mut);font-weight:400}
+  .pcadd{margin-top:14px;display:flex;flex-direction:column;gap:6px}
+</style>
+</head>
+<body>
+<header>
+  <div id="dot"></div>
+  <button id="bPcs" title="Mes PC">💻 <span id="curName">PC</span> ▾</button>
+  <nav>
+    <button data-v="screen" class="act">Écran</button>
+    <button data-v="ai">IA</button>
+    <button data-v="shell">Shell</button>
+  </nav>
+</header>
+
+<section class="view act" id="v-screen">
+  <div id="pad">
+    <img id="screen" alt="">
+    <div id="hint">Appuie sur ▶ Écran pour voir ton PC.<br>1 doigt = souris · tap = clic · 2 doigts = défiler / clic droit</div>
+  </div>
+  <div class="bar">
+    <button id="bScreen" class="p">▶ Écran</button>
+    <select id="qual">
+      <option value="8|0.5|45">Éco</option>
+      <option value="12|0.7|55" selected>Normal</option>
+      <option value="15|1|70">HD</option>
+    </select>
+    <button id="bMode">Trackpad</button>
+    <button id="bDrag">Glisser</button>
+    <button id="bClickL">Clic G</button>
+    <button id="bClickR">Clic D</button>
+    <button id="bKb">⌨ Clavier</button>
+    <button id="bFs" class="p">⤢ Plein écran</button>
+    <button id="bReset">1:1</button>
+  </div>
+
+  <div id="fsBar">
+    <button id="fsExit">⤡ Quitter</button>
+    <button id="fsMode">Trackpad</button>
+    <button id="fsReset">1:1</button>
+    <button id="fsRight">Clic D</button>
+    <button id="fsKb">⌨</button>
+    <button id="fsPcs">💻</button>
+  </div>
+
+  <div id="kb">
+    <input type="text" id="kbText" placeholder="Écris ici puis Envoyer (accents OK)">
+    <div class="keys">
+      <button class="p" id="kbSend">Envoyer</button>
+      <button data-k="enter">Entrée</button><button data-k="esc">Échap</button><button data-k="tab">Tab</button>
+      <button data-k="backspace">⌫</button><button data-k="delete">Suppr</button>
+      <button data-k="left">←</button><button data-k="up">↑</button><button data-k="down">↓</button><button data-k="right">→</button>
+      <button data-k="win">Win</button><button data-k="alt+tab">Alt+Tab</button>
+      <button data-k="ctrl+c">Ctrl+C</button><button data-k="ctrl+v">Ctrl+V</button><button data-k="ctrl+a">Ctrl+A</button>
+      <button data-k="ctrl+z">Ctrl+Z</button><button data-k="f5">F5</button><button data-k="alt+f4">Alt+F4</button>
+    </div>
+  </div>
+
+</section>
+
+<section class="view" id="v-ai">
+  <div class="log" id="log-ai">Décris une tâche, ton IA l'exécute sur le PC.</div>
+  <div class="bar">
+    <textarea id="in-ai" placeholder="Ex : ouvre Chrome et cherche la météo à Genève"></textarea>
+    <button class="p" data-run="ai" style="flex:1">Envoyer à l'IA</button>
+    <button class="danger" data-stop>Stop</button>
+    <button data-clear="log-ai">Effacer</button>
+  </div>
+</section>
+
+<section class="view" id="v-shell">
+  <div class="log" id="log-shell">Commandes directes sur le PC (cmd / PowerShell / bash).</div>
+  <div class="bar">
+    <textarea id="in-shell" placeholder="Ex : dir   |   ipconfig   |   start notepad"></textarea>
+    <button class="p" data-run="shell" style="flex:1">Exécuter</button>
+    <button class="danger" data-stop>Stop</button>
+    <button data-clear="log-shell">Effacer</button>
+  </div>
+</section>
+
+<div id="pcs">
+  <div class="sheet">
+    <div class="sh-head"><b>Mes PC</b><button id="pcClose">✕</button></div>
+    <div id="pcList"></div>
+    <div class="pcadd">
+      <b>Ajouter un PC</b>
+      <input type="text" id="pcName" placeholder="Nom (ex : Bureau)">
+      <input type="text" id="pcLink" placeholder="Lien de la console du PC (http://…:8899/?token=…)">
+      <input type="text" id="pcTok" placeholder="Token (seulement s'il n'est pas dans le lien)">
+      <button class="p" id="pcAdd">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const params = new URLSearchParams(location.search);
+
+// ---- liste des PC (enregistrée dans ce navigateur, transmise d'un PC à l'autre quand on bascule)
+const PCS_KEY = 'pcr_pcs', myUrl = location.origin;
+function loadPcs() { try { const l = JSON.parse(localStorage.getItem(PCS_KEY) || '[]'); return Array.isArray(l) ? l : []; } catch (e) { return []; } }
+function savePcs(l) { try { localStorage.setItem(PCS_KEY, JSON.stringify(l)); } catch (e) {} }
+function parseLink(txt, tok) {
+  txt = (txt || '').trim(); if (!txt) return null;
+  if (!/^https?:\/\//i.test(txt)) txt = 'http://' + txt;
+  try { const u = new URL(txt); return { url: u.origin, token: u.searchParams.get('token') || (tok || '').trim() }; } catch (e) { return null; }
+}
+function mergePcs(incoming) {
+  const list = loadPcs();
+  for (const p of incoming) {
+    if (!p || typeof p.url !== 'string' || !p.url) continue;
+    const ex = list.find(x => x.url === p.url);
+    if (ex) { if (!ex.token && p.token) ex.token = p.token; }
+    else list.push({ name: String(p.name || 'PC'), url: p.url, token: String(p.token || '') });
+  }
+  savePcs(list);
+}
+let incomingPcs = [];
+try { const m = location.hash.match(/^#pcs=(.*)$/); if (m) incomingPcs = JSON.parse(decodeURIComponent(m[1])); } catch (e) {}
+if (Array.isArray(incomingPcs)) mergePcs(incomingPcs);
+
+let token = params.get('token') || localStorage.getItem('pcr_token') || '';
+if (!token) { const me0 = loadPcs().find(p => p.url === myUrl); if (me0 && me0.token) token = me0.token; }
+if (params.get('token') || location.hash) history.replaceState(null, '', location.pathname);
+if (!token) { token = prompt('Token (affiché dans la console du PC) :') || ''; }
+try { localStorage.setItem('pcr_token', token); } catch (e) {}
+
+let ws, screenOn = false, absMode = false, dragOn = false, rid = 0, lastUrl = null;
+const runs = {};
+
+function connect() {
+  ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?token=${encodeURIComponent(token)}`);
+  ws.binaryType = 'arraybuffer';
+  ws.onopen = () => { $('#dot').classList.add('on'); if (screenOn) sendScreen(); };
+  ws.onclose = () => { $('#dot').classList.remove('on'); setTimeout(connect, 1500); };
+  ws.onmessage = ev => {
+    if (typeof ev.data !== 'string') {
+      const url = URL.createObjectURL(new Blob([ev.data], { type: 'image/jpeg' }));
+      $('#screen').src = url; $('#hint').style.display = 'none';
+      if (lastUrl) URL.revokeObjectURL(lastUrl); lastUrl = url; return;
+    }
+    const m = JSON.parse(ev.data);
+    if (m.t === 'out' && runs[m.id]) append(runs[m.id], m.data);
+    else if (m.t === 'done' && runs[m.id]) append(runs[m.id], `\n[terminé · code ${m.code}]\n`);
+    else if (m.t === 'err') toast(m.msg);
+  };
+}
+function send(o) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
+function toast(t) { const l = $('#log-shell'); append(l, '\n⚠ ' + t + '\n'); }
+function append(el, txt) { el.textContent += txt; el.scrollTop = el.scrollHeight; }
+
+// ---- onglets
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button,.view').forEach(x => x.classList.remove('act'));
+  b.classList.add('act'); $('#v-' + b.dataset.v).classList.add('act');
+});
+
+// ---- écran
+function sendScreen() {
+  const [fps, scale, q] = $('#qual').value.split('|').map(Number);
+  send({ t: 'screen', on: screenOn, fps, scale, q });
+}
+$('#bScreen').onclick = () => {
+  screenOn = !screenOn;
+  $('#bScreen').textContent = screenOn ? '■ Stop écran' : '▶ Écran';
+  $('#bScreen').classList.toggle('on', screenOn);
+  sendScreen();
+};
+$('#qual').onchange = () => screenOn && sendScreen();
+// modes : track = trackpad, direct = pointer là où on touche, view = déplacer/zoomer la vue
+const MODES = ['track', 'direct', 'view'], LABELS = { track: 'Trackpad', direct: 'Direct', view: 'Vue / Zoom' };
+let mode = 'track';
+function cycleMode() {
+  mode = MODES[(MODES.indexOf(mode) + 1) % MODES.length];
+  $('#bMode').textContent = $('#fsMode').textContent = LABELS[mode];
+}
+$('#bMode').onclick = cycleMode;
+$('#fsMode').onclick = cycleMode;
+
+// plein écran
+function setFs(on) {
+  document.body.classList.toggle('fs', on);
+  try {
+    if (on && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+    else if (!on && document.fullscreenElement) document.exitFullscreen();
+  } catch (e) {}
+}
+$('#bFs').onclick = () => setFs(true);
+$('#fsExit').onclick = () => setFs(false);
+document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) document.body.classList.remove('fs'); });
+$('#fsRight').onclick = () => send({ t: 'click', b: 'right' });
+$('#fsKb').onclick = () => $('#kb').classList.toggle('open');
+$('#bDrag').onclick = () => { dragOn = !dragOn; $('#bDrag').classList.toggle('on', dragOn); send({ t: dragOn ? 'down' : 'up' }); };
+$('#bClickL').onclick = () => send({ t: 'click', b: 'left' });
+$('#bClickR').onclick = () => send({ t: 'click', b: 'right' });
+
+// ---- pavé tactile
+const pad = $('#pad');
+let last = null, startT = 0, moved = false, maxN = 0, accX = 0, accY = 0, accS = 0, raf = 0;
+const avg = e => {
+  const t = [...e.touches]; return { x: t.reduce((a, b) => a + b.clientX, 0) / t.length, y: t.reduce((a, b) => a + b.clientY, 0) / t.length };
+};
+function flush() {
+  raf = 0;
+  if (accX || accY) { send({ t: 'move', dx: Math.round(accX), dy: Math.round(accY) }); accX = accY = 0; }
+  if (Math.abs(accS) >= 1) { send({ t: 'scroll', dy: Math.trunc(accS) }); accS -= Math.trunc(accS); }
+}
+function norm(p) {
+  const r = $('#screen').getBoundingClientRect();
+  return { x: Math.min(1, Math.max(0, (p.x - r.left) / r.width)), y: Math.min(1, Math.max(0, (p.y - r.top) / r.height)) };
+}
+// ---- zoom / déplacement de la vue (pincer avec 2 doigts pour zoomer, jusqu'à x8)
+const Z = { s: 1, tx: 0, ty: 0 }, MAXZ = 8;
+let pd = 0;
+const dist = e => Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+function applyZoom() {
+  const img = $('#screen');
+  const mw = img.offsetWidth * (Z.s - 1) / 2, mh = img.offsetHeight * (Z.s - 1) / 2;
+  Z.tx = Math.max(-mw, Math.min(mw, Z.tx)); Z.ty = Math.max(-mh, Math.min(mh, Z.ty));
+  if (Z.s === 1) { Z.tx = 0; Z.ty = 0; }
+  img.style.transform = `translate(${Z.tx}px,${Z.ty}px) scale(${Z.s})`;
+}
+function zoomAt(c, ratio) {
+  const r = pad.getBoundingClientRect(), px = r.left + r.width / 2, py = r.top + r.height / 2;
+  const ns = Math.min(MAXZ, Math.max(1, Z.s * ratio)), k = ns / Z.s;
+  Z.tx = (c.x - px) - ((c.x - px) - Z.tx) * k;
+  Z.ty = (c.y - py) - ((c.y - py) - Z.ty) * k;
+  Z.s = ns; applyZoom();
+}
+function resetZoom() { Z.s = 1; Z.tx = Z.ty = 0; applyZoom(); }
+$('#bReset').onclick = resetZoom;
+$('#fsReset').onclick = resetZoom;
+
+pad.addEventListener('touchstart', e => {
+  e.preventDefault(); startT = Date.now(); moved = false; maxN = Math.max(maxN, e.touches.length); last = avg(e);
+  pd = e.touches.length === 2 ? dist(e) : 0;
+  if (mode === 'direct' && e.touches.length === 1) send({ t: 'moveabs', ...norm(last) });
+}, { passive: false });
+pad.addEventListener('touchmove', e => {
+  e.preventDefault(); const cur = avg(e), n = e.touches.length; maxN = Math.max(maxN, n);
+  const dx = cur.x - last.x, dy = cur.y - last.y; last = cur;
+  if (Math.abs(dx) + Math.abs(dy) > 1) moved = moved || (Date.now() - startT > 80);
+  if (n >= 2) {
+    const d = dist(e); let pinching = false;
+    if (pd > 0) {
+      const ratio = d / pd;
+      if (Math.abs(ratio - 1) > 0.004) { zoomAt(cur, ratio); pinching = Math.abs(ratio - 1) > 0.015; }
+    }
+    pd = d;
+    if (mode === 'view') { Z.tx += dx; Z.ty += dy; applyZoom(); }
+    else if (!pinching) accS -= dy / 6;
+    moved = true;
+  } else if (mode === 'view') { Z.tx += dx; Z.ty += dy; applyZoom(); }
+  else if (mode === 'direct') send({ t: 'moveabs', ...norm(cur) });
+  else { accX += dx * 1.8; accY += dy * 1.8; }
+  if (!raf) raf = requestAnimationFrame(flush);
+}, { passive: false });
+pad.addEventListener('touchend', e => {
+  e.preventDefault();
+  if (e.touches.length === 0) {
+    if (!moved && Date.now() - startT < 300) {
+      if (maxN >= 2) send({ t: 'click', b: 'right' });
+      else {
+        if (mode === 'view' && last) send({ t: 'moveabs', ...norm(last) });
+        send({ t: 'click', b: 'left' });
+      }
+    }
+    maxN = 0; pd = 0;
+  } else { last = avg(e); pd = e.touches.length === 2 ? dist(e) : 0; }
+}, { passive: false });
+pad.addEventListener('dblclick', () => send({ t: 'click', b: 'left', double: true }));
+
+// ---- clavier
+$('#bKb').onclick = () => $('#kb').classList.toggle('open');
+$('#kbSend').onclick = () => { const v = $('#kbText').value; if (v) { send({ t: 'text', text: v }); $('#kbText').value = ''; } };
+
+$('#kbText').onkeydown = e => { if (e.key === 'Enter') { $('#kbSend').click(); } };
+document.querySelectorAll('[data-k]').forEach(b => b.onclick = () => {
+  const k = b.dataset.k.split('+');
+  send(k.length > 1 ? { t: 'hotkey', keys: k } : { t: 'key', key: k[0] });
+});
+
+// ---- IA + shell
+document.querySelectorAll('[data-run]').forEach(b => b.onclick = () => {
+  const kind = b.dataset.run, input = $('#in-' + kind), log = $('#log-' + kind), text = input.value.trim();
+  if (!text) return;
+  const id = ++rid; runs[id] = log;
+  append(log, `\n› ${text}\n`); input.value = '';
+  send({ t: kind, id, text });
+});
+document.querySelectorAll('[data-stop]').forEach(b => b.onclick = () => send({ t: 'stop' }));
+document.querySelectorAll('[data-clear]').forEach(b => b.onclick = () => $('#' + b.dataset.clear).textContent = '');
+
+// ---- menu "Mes PC"
+(function () {
+  let pcs = loadPcs();
+  let me = pcs.find(p => p.url === myUrl);
+  if (!me) { me = { name: location.hostname.split('.')[0] || 'PC', url: myUrl, token }; pcs.push(me); savePcs(pcs); }
+  else if (token && me.token !== token) { me.token = token; savePcs(pcs); }
+
+  const box = $('#pcs');
+  const label = () => { const c = loadPcs().find(p => p.url === myUrl); $('#curName').textContent = c ? c.name : 'PC'; };
+  const btn = (txt, cls, fn) => { const b = document.createElement('button'); b.textContent = txt; if (cls) b.className = cls; if (fn) b.onclick = fn; return b; };
+
+  function openPc(p) {
+    const hash = '#pcs=' + encodeURIComponent(JSON.stringify(loadPcs()));
+    location.href = p.url + '/?token=' + encodeURIComponent(p.token || '') + hash;
+  }
+  function render() {
+    const list = $('#pcList'); list.textContent = '';
+    for (const p of loadPcs()) {
+      const row = document.createElement('div'); row.className = 'pcrow';
+      const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = p.name;
+      const sub = document.createElement('small'); sub.textContent = p.url.replace(/^https?:\/\//, '');
+      nm.append(document.createElement('br'), sub);
+      const here = p.url === myUrl;
+      const go = here ? btn('● Ici', 'on') : btn('Ouvrir', 'p', () => openPc(p));
+      if (here) go.disabled = true;
+      const ed = btn('✎', '', () => {
+        const n = prompt('Nom du PC', p.name);
+        if (n && n.trim()) { const l = loadPcs(), x = l.find(q => q.url === p.url); if (x) { x.name = n.trim(); savePcs(l); render(); label(); } }
+      });
+      row.append(nm, go, ed);
+      if (!here) row.append(btn('✕', '', () => {
+        if (confirm('Supprimer ' + p.name + ' de la liste ?')) { savePcs(loadPcs().filter(q => q.url !== p.url)); render(); }
+      }));
+      list.appendChild(row);
+    }
+  }
+  const open = () => { render(); box.classList.add('open'); };
+  const close = () => box.classList.remove('open');
+  $('#bPcs').onclick = open;
+  $('#fsPcs').onclick = open;
+  $('#pcClose').onclick = close;
+  box.onclick = e => { if (e.target === box) close(); };
+  $('#pcAdd').onclick = () => {
+    const r = parseLink($('#pcLink').value, $('#pcTok').value);
+    if (!r) { alert('Lien invalide. Colle le lien affiché dans la console du PC.'); return; }
+    const l = loadPcs(), ex = l.find(x => x.url === r.url), name = $('#pcName').value.trim() || r.url.replace(/^https?:\/\//, '').split('.')[0];
+    if (ex) { ex.name = name; if (r.token) ex.token = r.token; } else l.push({ name, url: r.url, token: r.token });
+    savePcs(l); $('#pcName').value = $('#pcLink').value = $('#pcTok').value = ''; render(); label();
+  };
+  label();
+})();
+
+connect();
+</script>
+</body>
+</html>
